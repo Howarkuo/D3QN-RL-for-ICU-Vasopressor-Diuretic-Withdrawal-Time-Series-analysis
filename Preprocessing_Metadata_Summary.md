@@ -1,4 +1,4 @@
-## Metadata table and preprocessing pipeline
+# Metadata table and preprocessing pipeline
 
 MIMIC-IV Cardiogenic Shock Preprocessing Metadata Summary
 
