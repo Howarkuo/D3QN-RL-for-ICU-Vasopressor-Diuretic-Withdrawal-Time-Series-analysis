@@ -1,22 +1,15 @@
-# Metadata table and preprocessing pipeline
 
-Below is your **entire metadata table + preprocessing pipeline rewritten cleanly in fully valid GitHub Markdown (`README.md`) format**.
+# ** Metadata Table and Preprocessing Pipeline**
 
-You can **copy–paste directly** into your `README.md`.
-
----
-
-#  Metadata Table and Preprocessing Pipeline**
-
-## MIMIC-IV Cardiogenic Shock Preprocessing Metadata Summary**
+## **MIMIC-IV Cardiogenic Shock Preprocessing Metadata Summary**
 
 This document consolidates preprocessing logic, item IDs, data sources, filters, unit conversions, joins, and final dataset counts used in constructing the **cardiogenic shock (CS)** cohort from **MIMIC-IV v2.2**.
 
 ---
 
-# ## Part 1. Variable-Level Preprocessing Metadata**
+# **## Part 1. Variable-Level Preprocessing Metadata**
 
-## ### 1. Weight Duration**
+## **### 1. Weight Duration**
 
 **Item IDs**
 
@@ -61,7 +54,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-##3. Blood Gas + Labs**
+## **### 3. Blood Gas + Labs**
 
 **Item IDs:** Full list (50801–50825), 52033, FiO₂ = 223835
 
@@ -89,7 +82,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-## 4. Urine Output Rate**
+## **### 4. Urine Output Rate**
 
 **Item IDs:** All urine output + GU irrigant volume item IDs
 
@@ -115,7 +108,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-## 5. Vital Signs**
+## **### 5. Vital Signs**
 
 **Item IDs:** HR, BP (invasive/NIBP), RR, SpO₂, glucose, temperature
 
@@ -139,7 +132,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-## 6. Body Surface Area (BSA)**
+## **### 6. Body Surface Area (BSA)**
 
 **Inputs:** Best weight + best height per stay
 **Formula (DuBois):**
@@ -153,7 +146,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-## 7. Cardiac Output**
+## **### 7. Cardiac Output**
 
 **Item IDs:** Thermodilution, continuous CO, PiCCO, NICOM, Impella
 
@@ -174,7 +167,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-## 8. Vasopressors**
+## **### 8. Vasopressors**
 
 **Item IDs:** Epinephrine, dopamine, phenylephrine, norepinephrine, vasopressin
 
@@ -203,7 +196,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-##9. Mechanical Circulatory Support (MCS)**
+## **### 9. Mechanical Circulatory Support (MCS)**
 
 **Sources**
 
@@ -219,9 +212,9 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-# Part 2. Cohort Construction Pipeline**
+# **## Part 2. Cohort Construction Pipeline**
 
-##  Step 1 — Initial Cardiogenic Shock Identification**
+## **### Step 1 — Initial Cardiogenic Shock Identification**
 
 **Sources**
 
@@ -237,14 +230,14 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-## Step 2 — Inclusion Filters**
+## **### Step 2 — Inclusion Filters**
 
-###Step 2A — Adults**
+### **Step 2A — Adults**
 
 * `anchor_age > 18`
 * Source: `patients.csv`
 
-### Step 2B — ICU stay > 24 hours**
+### **Step 2B — ICU stay > 24 hours**
 
 * `los > 1 day`
 * Source: `icustays.csv`
@@ -313,7 +306,7 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 
 ---
 
-#  Part 5. Lactate & pH Subsets**
+# **## Part 5. Lactate & pH Subsets**
 
 | Variable       | subject_id | hadm_id |
 | -------------- | ---------- | ------- |
@@ -326,4 +319,5 @@ This document consolidates preprocessing logic, item IDs, data sources, filters,
 | lactate > 1.9  | 1558       | 1623    |
 
 ---
+
 
