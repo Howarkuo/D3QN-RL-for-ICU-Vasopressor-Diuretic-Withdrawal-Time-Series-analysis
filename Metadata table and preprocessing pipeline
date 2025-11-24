@@ -1,0 +1,302 @@
+## Metadata table and preprocessing pipeline
+
+MIMIC-IV Cardiogenic Shock Preprocessing Metadata Summary
+
+This document consolidates all preprocessing logic, item IDs, data sources, filters, unit conversions, joins, and final dataset counts used in the cardiogenic shock cohort derived from MIMIC-IV v2.2.
+
+Part 1. Variable-Level Preprocessing Metadata
+
+Below is a cleaned, structured version of each variable category.
+
+1. Weight Duration
+
+Item IDs:
+
+224639 – Daily Weight
+
+226512 – Admission Weight (kg)
+
+Source: icu/chartevents.csv.gz
+Citation: MIT-LCP weight_durations.sql
+
+Columns Used: valuenum, hadm_id, item_id, charttime
+
+Filtering:
+
+weight > 0
+
+valuenum IS NOT NULL
+
+Standardization:
+
+itemid 226512 → “admit” weight
+
+itemid 224639 → “daily” weight
+
+Final: UNION ALL (preserve duplicates)
+
+2. Height
+
+Item IDs:
+
+226707 – Height
+
+226730 – Height (cm)
+
+Source: icu/chartevents.csv.gz
+Citation: MIT-LCP height.sql
+
+Filters:
+
+120 cm < height < 230 cm
+
+Inch conversion: height_in = height_cm / 2.54
+
+3. Blood Gas + Labs
+
+Item IDs: Long list (50801–50825, 52033, FiO₂ 223835)
+
+Sources:
+
+hosp/labevents.csv.gz
+
+icu/chartevents.csv.gz
+
+Citation: MIT-LCP bg.sql
+
+Basic Outlier Filters:
+
+SpO₂: 0–100
+
+FiO₂: 20–100
+
+Hematocrit ≤ 100%
+
+Glucose ≤ 10,000
+
+Lactate ≤ 10,000
+
+Conversions:
+
+Alveolar O₂ formula
+
+Glucose mg/dL → mmol/L (divide by 18)
+
+Fahrenheit → Celsius ((°F−32)×5/9)
+
+Hematocrit fraction → % (×100)
+
+4. Urine Output Rate
+
+Item IDs: Comprehensive list of urine outputs + irrigant volume IDs
+
+Sources:
+
+icu/outputevents.csv.gz
+
+Weight_duration (for weight normalization)
+
+Rules:
+
+Irrigant instilled must be subtracted (GU Irrigant Volume In × −1)
+
+Urine rate formula:
+urine_rate_mL_per_kg_per_hr = total_output / time_elapsed / weight_kg
+
+Staging windows: 6h, 12h, 24h cumulative
+
+5. Vital Signs
+
+Item IDs: HR, BP (invasive + noninvasive), RR, SpO₂, glucose, temperature
+
+Source: icu/chartevents.csv.gz
+Citation: MIT-LCP vitalsign.sql
+
+Outlier Filters:
+
+HR: 0–300
+
+SBP / DBP / MAP:
+
+Invasive & NIBP: SBP<400, DBP<300, MAP<300
+
+RR: 0–70
+
+SpO₂: 0–100
+
+Temp °F: 70–120
+
+Temp °C: 10–50
+
+Standardization:
+
+For BP: take average of all accepted invasive + noninvasive + ART BP
+(per ACC/AHA HF guideline)
+
+6. Body Surface Area (BSA)
+
+Input: Best weight + best height per stay
+Formula (DuBois):
+0.007184 × weight^0.425 × height^0.725
+Range: 0–4 m²
+Static: BSA remains fixed per ICU stay.
+
+7. Cardiac Output
+
+Item IDs:
+Thermodilution, continuous CO, PiCCO, NICOM, Impella
+
+Source: icu/chartevents.csv.gz
+
+Outlier Filters:
+
+CO: 0.5–20 L/min
+
+Average taken across modalities
+
+Cardiac Index: CO / BSA
+(range < 6 L/min/m²)
+
+8. Vasopressors
+
+Item IDs: Epinephrine, dopamine, phenylephrine, norepinephrine, vasopressin
+
+Source: icu/inputevents.csv.gz
+Citation: MIT-LCP medication concepts
+
+Unit conversions:
+
+mg/min → mcg/min (*1000/1?)
+
+units/min → units/hr (*60)
+
+Handling NULL rates:
+COALESCE(rate,0)
+
+Norepinephrine-equivalent dose:
+
+Epinephrine: 1 : 1
+
+Phenylephrine: /10
+
+Dopamine: /100
+
+Vasopressin: 0.4 units/min = 1 NE-equivalent
+
+9. Mechanical Circulatory Support (MCS)
+
+Item IDs: IABP, Impella, ECMO, VAD (full list cleaned)
+
+Sources:
+
+icu/chartevents.csv.gz
+
+icu/procedureevents.csv.gz
+
+Classification Logic:
+
+IABP = 224272
+
+Impella = 224314, 229897, 229898
+
+ECMO = 224660, 229529, 229530
+
+VAD = 220125, 220128, 223775, 229836, 229859, 229895
+
+Part 2. Cohort Construction Pipeline
+
+Below is a clean, chronological summary of your cohort selection steps with counts.
+
+Step 1 — Initial Cardiogenic Shock Identification
+
+Source: diagnoses_icd.csv + d_icd_diagnoses.csv
+Logic: ICD codes matching cardiogenic shock keywords
+(e.g., 78551, R570, T8111XA)
+
+Result:
+
+subject_id: 2,269
+
+hadm_id: 2,438
+
+Step 2 — Inclusion Filters
+2A. Adult patients
+
+anchor_age > 18
+Source: patients.csv
+
+2B. ICU stay duration > 24 hours
+
+los > 1 day
+Source: icustays.csv
+
+Resulting combined table (after NATURAL JOINs):
+
+subject_id: 1,976
+
+hadm_id: 2,105
+
+stay_id: 2,531
+
+Part 3. Table-by-Table Final Counts (Cleaned)
+Table	subject_id	hadm_id	stay_id	Notes
+weight_durations	1970	2096	2458	height joined, filtered >0
+_height	1620	1707	1760	with cm filter
+BSA	1970	2096	2458	Joined height+weight
+vitalsign	1976	2105	2531	includes BP ranking logic
+bloodgas	1881	1993	—	labevents + chartevents
+urine_output	1928	2052	2453	before rate
+urine_output_rate	1928	2052	2453	staging 6/12/24h
+cardiac_output	681	688	708	from chartevents
+cardiac_index	1951	2074	2433	CI = CO/BSA
+MCS counts
+
+Procedureevents:
+
+IABP: 385–413
+
+ECMO: 32–33
+
+Impella: 0
+
+VAD: 0
+
+Chartevents:
+
+Impella: 8
+
+ECMO: 4
+
+VAD: 12–14
+
+IABP: 0
+
+Part 4. Hypotension & Severity Event Detection
+Hypotension events
+
+SBP < 90
+
+MAP < 65
+
+Episodes grouped by ≥30 min spacing
+
+First BP timestamp logic:
+prioritize invasive BP > NIBP > ART
+
+Counts:
+
+num_sbp_less90: 1883 (subject_id)
+
+num_map_less65: 1915
+
+hypotension timestamps: 1939
+
+Part 5. Lactate & pH Subsets
+Variable	subject_id	hadm_id
+pH events	1880	1992
+pH < 7.2	648	655
+pH < 7.3	1230	1259
+pH < 7.4	1715	1789
+lactate events	1840	1943
+lactate > 2	1523	1585
+lactate > 1.9	1558	1623
