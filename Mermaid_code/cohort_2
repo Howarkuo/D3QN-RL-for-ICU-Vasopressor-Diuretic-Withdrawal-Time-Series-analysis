@@ -1,0 +1,120 @@
+graph TD
+    %% Global Styles
+    classDef storage fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef process fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef concept fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef derived fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef output fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+
+    %% 1. Technical Setup
+    subgraph Setup ["0. Technical Environment & Methodology"]
+        RawFiles[("MIMIC-IV Raw Files<br/>(CSV/Parquet)")]:::storage
+        DuckDB[("DuckDB Engine<br/>(Local OLAP)")]:::storage
+        CohortList["Target Cohort List<br/>(Cardiogenic Shock)"]:::process
+        
+        RawFiles --> DuckDB
+        DuckDB --> CohortList
+    end
+
+    %% 2. Extraction Strategy
+    subgraph Methodology ["1. Strategy: Cohort-First, Feature-Second"]
+        RowRed["Row Reduction:<br/>Filter by Subject_ID"]:::process
+        ColRed["Column Reduction:<br/>Filter by ItemID"]:::process
+        
+        CohortList --> RowRed
+        RowRed --> ColRed
+    end
+
+    %% 3. Clinical Concepts (Subtables)
+    subgraph Concepts ["1.1 Target Clinical Concepts (Subtables)"]
+        direction TB
+
+        %% Branch A: Anthropometrics & BSA
+        subgraph Anthro ["Anthropometrics"]
+            WtRaw(Weight Raw):::concept
+            HtRaw(Height Raw):::concept
+            WtProc["Logic: Admit vs Daily<br/>Backfill (-2h) & Forward Fill (LEAD)"]:::process
+            HtProc["Logic: cm/inch conv.<br/>Range Filter (120-230cm)"]:::process
+            BSA["BSA (DuBois)<br/>Priority: Admit > Recent"]:::derived
+
+            ColRed --> WtRaw & HtRaw
+            WtRaw --> WtProc
+            HtRaw --> HtProc
+            WtProc --> BSA
+            HtProc --> BSA
+        end
+
+        %% Branch B: Fluids & Renal
+        subgraph Renal ["Fluids & Renal"]
+            UORaw(Urine Output + HR):::concept
+            GridGen["Generate Hourly Grid<br/>(GENERATE_SERIES)"]:::process
+            RateCalc["Calc: Rate/Min<br/>Agg: Sum per Hour"]:::process
+            UOFinal(Hourly Urine Output):::output
+
+            ColRed --> UORaw
+            UORaw --> GridGen
+            GridGen --> RateCalc
+            RateCalc --> UOFinal
+            WtProc -.->|Div by Weight| UOFinal
+        end
+
+        %% Branch C: Labs
+        subgraph Lab ["Blood Gas Analysis"]
+            BGRaw(Labevents):::concept
+            ChartO2(Chartevents SpO2/FiO2):::concept
+            MergeBG["Merge: Snapshot Logic<br/>Window: 2h/4h lookback"]:::process
+            CalcBG["Derivations:<br/>AaDO2, PaO2/FiO2 Ratio"]:::derived
+
+            ColRed --> BGRaw & ChartO2
+            BGRaw --> MergeBG
+            ChartO2 --> MergeBG
+            MergeBG --> CalcBG
+        end
+
+        %% Branch D: Hemodynamics
+        subgraph Hemo ["Hemodynamics"]
+            BPRaw(BP Vitals):::concept
+            CORaw(Cardiac Output):::concept
+            CVPRaw(CVP):::concept
+            PCWPRaw(PCWP):::concept
+            
+            BPLogic["Logic: Arterial > NIBP<br/>Validity: 12h fill"]:::process
+            COLogic["Logic: Priority Rank<br/>(Thermo > PiCCO > Other)"]:::process
+            
+            CI["Cardiac Index<br/>(CO / BSA)"]:::derived
+            SVR["SVR Calculation<br/>ASOF JOIN (BP, CVP, CO)"]:::derived
+
+            ColRed --> BPRaw & CORaw & CVPRaw & PCWPRaw
+            BPRaw --> BPLogic
+            CORaw --> COLogic
+            
+            COLogic --> CI
+            BSA --> CI
+            
+            BPLogic --> SVR
+            COLogic --> SVR
+            CVPRaw --> SVR
+        end
+
+        %% Branch E: Medications
+        subgraph Meds ["Vasopressors"]
+            InputRaw(Inputevents):::concept
+            Norm["Normalize Units<br/>(mg/kg/min -> mcg/kg/min)"]:::process
+            NEQ["Calc: Norepinephrine Eq.<br/>Sum(Drug * Potency)"]:::derived
+
+            ColRed --> InputRaw
+            InputRaw --> Norm
+            Norm --> NEQ
+        end
+    end
+
+    %% Dependencies
+    CalcBG --> FinalMerge
+    UOFinal --> FinalMerge
+    BSA --> FinalMerge
+    CI --> FinalMerge
+    SVR --> FinalMerge
+    NEQ --> FinalMerge
+    BPLogic --> FinalMerge
+
+    FinalMerge[("Final Merged Dataset<br/>(Pre-Modeling)")]:::output

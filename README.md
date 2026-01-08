@@ -7,7 +7,9 @@ I maintain a detailed metadata sheet for language and preprocessing steps:
 
 You can view it online or download as CSV/Excel for offline use.
 
-![Patient Journet and Time-Step](https://github.com/Howarkuo/D3QN-RL-for-ICU-Vasopressor-Diuretic-Withdrawal-Time-Series-analysis/blob/main/patient_journey.png)
+For detailed progression report, please visit google slides
+
+![Thesis Report](https://docs.google.com/presentation/d/1U09t7jKxZ8UsAnwgkDNlwsjB7o_TckVKAzBYZJCz3jQ/edit?usp=sharing)
 
 
 ##  Directory Structure

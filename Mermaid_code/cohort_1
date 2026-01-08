@@ -1,0 +1,74 @@
+graph TD
+    %% Global Styles
+    classDef file fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef process fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef table fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef cohort fill:#fff3e0,stroke:#e65100,stroke-width:3px;
+
+    %% 1. Raw Input Files
+    subgraph Inputs ["Phase 0: Raw CSV Inputs"]
+        D_ICD[("diagnoses_icd.csv")]:::file
+        PatCSV[("patients.csv")]:::file
+        ICUCSV[("icustays.csv")]:::file
+        
+        LabCSV[("labevents.csv")]:::file
+        ChartCSV[("chartevents.csv")]:::file
+        ProcCSV[("procedureevents.csv")]:::file
+        OutCSV[("outputevents.csv")]:::file
+        InCSV[("inputevents.csv")]:::file
+        IngCSV[("ingredientevents.csv")]:::file
+    end
+
+    %% 2. Cohort Creation Logic
+    subgraph CohortCreation ["Phase 1: Cohort Definition"]
+        F_Diag["Filter: Cardiogenic Shock<br/>(ICD Codes)"]:::process
+        F_Age["Filter: Age > 18"]:::process
+        F_Stay["Filter: ICU Stay > 24h"]:::process
+        
+        T_Diag(diagnoses_cardiogenic_shock):::table
+        T_Pat(patient_hosp_older_than_18):::table
+        T_ICU(icu_stays_over_24hrs_v2):::table
+        
+        CohortMerge["MERGE: Join by subject_id / hadm_id"]:::process
+        
+        MasterCohort(cohort_v2):::cohort
+        
+        D_ICD --> F_Diag --> T_Diag
+        PatCSV --> F_Age --> T_Pat
+        ICUCSV --> F_Stay --> T_ICU
+        
+        T_Diag --> CohortMerge
+        T_Pat --> CohortMerge
+        T_ICU --> CohortMerge
+        
+        CohortMerge --> MasterCohort
+    end
+
+    %% 3. Data Extraction (Feature Filtering)
+    subgraph Extraction ["Phase 2: Data Extraction"]
+        direction TB
+        
+        %% Join Logic
+        JoinH["Inner Join (by hadm_id)"]:::process
+        JoinS["Inner Join (by stay_id)"]:::process
+
+        %% Resulting Tables
+        Res_Lab(labevents_cs_v2):::table
+        Res_Chart(chartevents_cs_v2):::table
+        Res_Proc(procedureevents_cs_v2):::table
+        Res_Out(outputevents_cs_v2):::table
+        Res_In(inputevents_cs_v2):::table
+        Res_Ing(ingredientevents_cs_v2):::table
+
+        %% Flows
+        MasterCohort --> JoinH
+        MasterCohort --> JoinS
+
+        LabCSV --> JoinH --> Res_Lab
+        
+        ChartCSV --> JoinS --> Res_Chart
+        ProcCSV --> JoinS --> Res_Proc
+        OutCSV --> JoinS --> Res_Out
+        InCSV --> JoinS --> Res_In
+        IngCSV --> JoinS --> Res_Ing
+    end
