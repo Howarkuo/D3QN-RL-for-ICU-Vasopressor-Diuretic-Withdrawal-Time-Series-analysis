@@ -9,7 +9,7 @@ You can view it online or download as CSV/Excel for offline use.
 
 For detailed progression report, please visit google slides
 
-![Thesis Report](https://docs.google.com/presentation/d/1U09t7jKxZ8UsAnwgkDNlwsjB7o_TckVKAzBYZJCz3jQ/edit?usp=sharing)
+[Thesis Report](https://docs.google.com/presentation/d/1U09t7jKxZ8UsAnwgkDNlwsjB7o_TckVKAzBYZJCz3jQ/edit?usp=sharing)
 
 
 ##  Directory Structure
